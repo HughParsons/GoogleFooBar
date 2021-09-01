@@ -1,5 +1,3 @@
-
-
 def generate(numbers, k):
     """
     Generates combinations of numbers C k, preserves order.
