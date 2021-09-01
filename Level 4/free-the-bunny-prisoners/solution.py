@@ -1,105 +1,91 @@
 
 
 def generate(numbers, k):
+    """
+    Generates combinations of numbers C k, preserves order.
+    """
     if k == 1: return [[num] for num in numbers]
+
+    # looping through each number and generating combinations from itself 
+    # and the following numbers (preserving order)
     ans = []
     for i in range(len(numbers)-k+1):
         for number in generate(numbers[i+1:],k-1):
             ans.append([numbers[i]] + number)
+
     return ans
     
 
 def solution(num_buns, num_required):
     """
-        return the lexicographically smallest description of the keys 
-        for each bunny such that any num_required bunnies will be
-        able to open the lock
-        
-        we dont know which combination of keys is required
-        so every combination must be producible using any 
-        num_req bunnies??? - check this
-        
-        ^ as in no single bunnie can produce every combination?
-        
-        1 <= bunnies <= 9, 0 <= num_required <= 9?
-        ^ check
-        
-        First thoughts:
-            kind of looks like shamirs secret sharing in that 
-            we are given n keys and m bunnies
-            
-            
-            code packing?
-            
-            by pigeonhole, each key must be represented 
-            num_bunnies - num_required + 1 times
-            such that no num_required bunnies do not have a key
-            
-            num combinations is num_bun choose num_req?
-            union(any num_required bunnies) == set(0,1...n)
-         
-        sol(n,0): []  
-        sol(n,1): [[0]]*n
-        sol(n,n): [[0],[1],...[n]]
-        
-        sol(3,2): [[0,1],[0,2],[1,2]]
-        sol(3,3): [[0],[1],[2]]
-        
-        sol(4,2): 
-        [[0,1,2],[0,1,3],[0,2,3],[1,2,3]]???
-        
-        sol(4,3):
-        [[0,1],[0,2],[1,3],[2,3]]
-        
-        sol(a,b): general form? = ans[:a-b+1][0] = 0, ans[:a-b][1] = 1
-        
-        sol(5,3)
-        [
-            [0,1,2,3,4,5], = [012,013,014,023,024,034]
-            [0,1,2,6,7,8], = [012,013,014,123,124,134]
-            [0,3,4,6,7,9], = [012,023,024,123,124,234]
-            [1,3,5,6,8,9], = [012,023,034,123,134,234]
-            [2,4,5,7,8,9]
-        ]
-        one bunny can use multiple keys :(
-        ^ but how can they turn them simultaneously??
-        -- MAGIC BUNNIES
-        
-        we need some number of keys, K, such that K can be split
-        between num_bunnies groups but only the union of ANY
-        num_required will form the complete set {0,1,...,k}
-        
-        Observations:
-            k(n, 0) = 0
-            k(n, 1) = 1
-            k(n, n) = n
-            k(5, 3) = 10
-            
-        lol it's k(n, m) = n C (m-1) -- but why?
-            any key in {0,1...k} must be repeated
-            n+1 - k times (pigeonhole)
-            but we have to have enough keys such that not
-            fewer than m bunnies can unlock?
-            ^ thus how many ways can we choose m-1 bunnies that 
-              cannot unlock the doors
-            then each bunny in this combination is assigned the
-            index of that combination
-                YESSSSSSSS!!!!!!!!!!!!!!
-    012,013,014,023,024,034, 123,124,134, 234
-    0,1,2,3,4
+    Description:
+        Given some number of bunnies between 1 and 9, and a minimum required number of bunnies, 
+        between 0 and 9 (both inclusive), to open all of the locks, return the distribution of 
+        some number of keys in the smallest lexicographical order, such that no fewer than 
+        num_required bunnies may open the locks.
+
+    Interpretation:
+        Initially I misinterpreted this problem, assuming that each bunny could only turn one key,
+        as the problem states that they must be turned simulatneously, and I could not view all the
+        test cases at that time. However, this turned out to be false, and instead the problem focuses
+        on finding the minimum number of keys, K, such that we can generate (num_buns) sets of keys, with
+        only the union of any num_required sets forming the set {0,1,...,K}.
+
+        A few simple deductions can be made:
+
+            1.  By the pigeonhole principle, we must have at least 
+                (num_buns - num_required + 1) occurences of each key, 
+                otherwise we could chose some num-required bunnies
+                without said key.
+
+            2.  In turn, this means that for each key we are choosing
+                (num_buns - num_required + 1) bunnies to allocate that
+                key, thus K = num_buns C (num_buns - num_required + 1),
+                where C represents the binomial coefficient.
+
+            3.  The constraint on lexicographical order means that we
+                must generate these groups from smallest to largest.
+
+    Method:
+        Deduction 2 under the interpretation section allows us to drastically simplify
+        the complexity of our problem to simply generating every combination of
+        num_buns C (num_buns - num_required + 1) in lexicographical order, then 
+        assigning an index/key to each of these combinations.
+
+        For example, consider 5 C (5 - 3 + 1), (5 choose 3), where we generate the
+        following combinations:
+            [
+                [0, 1, 2], [0, 1, 3], [0, 1, 4], [0, 2, 3], [0, 2, 4], [0, 3, 4], 
+                [1, 2, 3], [1, 2, 4], [1, 3, 4], 
+                [2, 3, 4]
+            ]
+        These represent, as ordered sets, every possible choice of 3 numbers from 
+        {0, 1, 2, 3, 4}.
+
+        Under the constraint on the number of occurinces for each key, we can assign
+        each of the sets their assosciated index in the output array, and because these
+        sets are in minimum lexicographical order, so to is our assignment of the keys.
+
+        Thus we simply call generate(numbers, maximum_to_choose) on the sorted list of
+        numbers, and then repeat the key assignment process above. The combinations are
+        generated using recursion under the assumption that the input array is sorted.
+
+
+    Complexity Analysis:
+        Let n = num_buns, and k = num_required
+
+        Im not too confident with complexity analysis, especially for recursion, but
+        we make on the order of k calls, thus arriving at a simple estimate of O(n^k).
     """
-    
+    # generating a dict to avoid problems with pointers in multidimensional array generation
+    # if you have a fix for this other than using range() multiple times please let me know.
     ans = {i:[] for i in range(num_buns)}
 
+    # generating all combinations and assigning each key
     combinations = generate([i for i in range(num_buns)], num_buns - num_required + 1)
     for i in range(len(combinations)):
-        # print(combinations[i])
         for n in combinations[i]:
             ans[n].append(i)
 
-    
+    # reformatting
     return [ans[l] for l in ans]
-
-if __name__ == "__main__":
-    # print(generate([0,1,2,3], ))
-    print(solution(4, 0))
